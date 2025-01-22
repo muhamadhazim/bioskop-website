@@ -1,9 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 
 const Home = () => {
-  // Simulating login status; replace this with your actual authentication logic
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [movies, setMovies] = useState([]);
+  const [imageError, setImageError] = useState({}); // To track image loading errors
+
+  useEffect(() => {
+    // Check if a token exists in localStorage
+    const token = localStorage.getItem("token");
+    if (token) {
+      const parsedToken = JSON.parse(token);
+      if (parsedToken) {
+        setIsLoggedIn(true);
+        setUser({
+          name: "User", // You can replace this with the actual user data from the token if needed
+        });
+      }
+    }
+
+    // Fetch movie data using Axios
+    const fetchMovies = async () => {
+      try {
+        const response = await axios.get("http://localhost:8000/api/movies");
+        if (response.data.success) {
+          setMovies(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching movies:", error);
+      }
+    };
+
+    fetchMovies();
+  }, []);
+
+  const handleImageError = (filename) => {
+    setImageError((prev) => ({ ...prev, [filename]: true }));
+  };
 
   return (
     <div className="min-h-screen bg-gray-200">
@@ -33,7 +68,7 @@ const Home = () => {
                 </Link>
                 {/* Profile Icon */}
                 <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-gray-600 text-sm">U</span>
+                  <span className="text-gray-600 text-sm">{user.name[0]}</span>
                 </div>
               </>
             ) : (
@@ -52,27 +87,41 @@ const Home = () => {
       <main className="container mx-auto py-8 px-4 sm:px-6">
         {/* Grid of Movies */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 12 }).map((_, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-lg shadow-md overflow-hidden"
-            >
-              {/* Movie Image */}
-              <div className="h-48 bg-gray-300"></div>
-              {/* Movie Title */}
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  Deadpool & Wolverine
-                </h3>
-                <div className="mt-2 flex justify-center space-x-2">
-                  {/* Rating Placeholder */}
-                  <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
-                  <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
-                  <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+          {movies.length > 0 ? (
+            movies.map((movie) => (
+              <div
+                key={movie.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden"
+              >
+                {/* Movie Image */}
+                <div
+                  className="h-48 bg-cover bg-center"
+                  style={{
+                    backgroundImage: imageError[movie.judul]
+                      ? "url('/path/to/placeholder-image.jpg')"
+                      : `url(http://localhost:8000/api/showImage/${movie.judul.replace(
+                          /\s+/g,
+                          ""
+                        )}.png)`,
+                  }}
+                  onError={() => handleImageError(movie.judul)}
+                ></div>
+                {/* Movie Title */}
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {movie.judul}
+                  </h3>
+                  <p className="text-sm text-gray-600">{movie.genre}</p>
+                  <p className="text-sm text-gray-600">{movie.durasi}</p>
+                  <div className="mt-2 flex justify-center space-x-2">
+                    <span className="text-gray-800">{movie.rating}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p>Loading movies...</p>
+          )}
         </div>
       </main>
     </div>
